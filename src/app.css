@@ -1,0 +1,126 @@
+/* src/app.css */
+:root {
+  --naranja: #FF6B00;
+  --azul-serio: #102A43;
+  --blanco: #ffffff;
+  --gris-fondo: #f0f4f8;
+}
+
+/* Reset de márgenes para que ocupe toda la pantalla */
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Contenedor de pantalla dividida */
+.login-screen {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Lado Izquierdo: Branding */
+.login-branding {
+  flex: 1.2;
+  background: linear-gradient(135deg, var(--azul-serio) 0%, var(--naranja) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  padding: 40px;
+  text-align: center;
+}
+
+.logo-circle {
+  background: white;
+  padding: 25px;
+  border-radius: 50%;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.logo-img {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+}
+
+/* Lado Derecho: Formulario */
+.login-form-area {
+  flex: 1;
+  background-color: var(--blanco);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.login-form {
+  width: 100%;
+  maxWidth: 360px;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--azul-serio);
+  font-size: 14px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #e1e8ed;
+  border-radius: 10px;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--naranja);
+}
+
+/* Botón Naranja */
+.btn-ingresar {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--naranja);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+  transition: transform 0.2s, background 0.3s;
+}
+
+.btn-ingresar:hover {
+  background-color: #e66000;
+  transform: translateY(-2px);
+}
+
+.btn-ingresar:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.footer-text {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  margin-top: 40px;
+  line-height: 1.6;
+}
