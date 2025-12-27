@@ -1,13 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import './app.css'; 
 import Login from './pages/adm/login';
 import Usuarios from './pages/adm/usuarios';
 
+// --- COMPONENTE RELOJ Y USUARIO ---
+const UserHeader = () => {
+  const [dateTime, setDateTime] = useState(new Date());
+  const userName = localStorage.getItem('userName') || "Admin";
+
+  useEffect(() => {
+    const timer = setInterval(() => setDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'flex-end', 
+      alignItems: 'center', 
+      padding: '10px 25px', 
+      background: '#fff', 
+      borderBottom: '1px solid #D1D9E0',
+      gap: '20px',
+      fontSize: '14px',
+      color: '#102A43'
+    }}>
+      <span style={{ fontWeight: 'bold' }}>👤 Usuario: <span style={{ color: '#FF6B00' }}>{userName}</span></span>
+      <span style={{ borderLeft: '1px solid #ccc', paddingLeft: '20px', color: '#627D98' }}>📅 {dateTime.toLocaleDateString()}</span>
+      <span style={{ fontWeight: 'bold' }}>🕒 {dateTime.toLocaleTimeString()}</span>
+    </div>
+  );
+};
+
 // --- DISEÑO DEL SISTEMA (Sidebar Completo para Admin) ---
 const AppLayout = ({ children }) => (
-  <div style={{ display: 'flex', height: '100vh' }}>
+  <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
     <aside style={{ width: '280px', background: '#102A43', color: 'white', overflowY: 'auto', padding: '20px' }}>
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
          <h2 style={{ color: '#FF6B00', margin: 0, fontSize: '22px' }}>Tienda Camila</h2>
@@ -41,14 +70,18 @@ const AppLayout = ({ children }) => (
         
         {/* BOTÓN CERRAR SESIÓN */}
         <div style={{ marginTop: '40px', borderTop: '1px solid #243B53', paddingTop: '20px' }}>
-          <Link to="/" style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 'bold' }}>CERRAR SESIÓN</Link>
+          <Link to="/" onClick={() => localStorage.clear()} style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 'bold' }}>CERRAR SESIÓN</Link>
         </div>
       </nav>
     </aside>
 
-    <main style={{ flex: 1, background: '#F0F4F8', overflowY: 'auto' }}>
-      {children}
-    </main>
+    {/* ÁREA DE CONTENIDO CON HEADER SUPERIOR */}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <UserHeader />
+      <main style={{ flex: 1, background: '#F0F4F8', overflowY: 'auto' }}>
+        {children}
+      </main>
+    </div>
   </div>
 );
 

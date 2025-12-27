@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../supabase';
+import { supabase, supabaseAdmin } from '../../supabase'; 
 import '../../app.css';
 
 export default function Usuarios() {
@@ -61,22 +61,38 @@ export default function Usuarios() {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  const handleDelete = async (id, name) => {
+    const confirmar = window.confirm(`¿Estás seguro de eliminar COMPLETAMENTE al usuario: ${name}?`);
+    if (!confirmar) return;
+
+    setSaving(true);
+    try {
+      const { error: dbError } = await supabaseAdmin.from('perfiles').delete().eq('id', id);
+      if (dbError) throw dbError;
+
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (authError) throw authError;
+
+      alert('Usuario eliminado exitosamente.');
+      fetchUsers();
+    } catch (error) {
+      alert('Error al eliminar: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handlePermChange = (key, checked) => {
     setPermisos({ ...permisos, [key]: checked });
   };
 
   const handleFormChange = (field, value) => setForm({ ...form, [field]: value });
 
-  const handleRefChange = (index, field, value) => {
-    const refs = [...form.referencias];
-    refs[index] = { ...refs[index], [field]: value };
-    setForm({ ...form, referencias: refs });
-  };
-
   const validateForm = () => {
     if (!form.full_name.trim()) return 'El nombre completo es obligatorio.';
     if (!form.username.trim()) return 'El nombre de usuario es obligatorio.';
     if (!form.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) return 'Email no válido.';
+    if (!editingId && !form.password) return 'La contraseña es obligatoria para nuevos usuarios.';
     if (!form.phone1.trim()) return 'Teléfono 1 es obligatorio.';
     return null;
   };
@@ -89,50 +105,84 @@ export default function Usuarios() {
     setSaving(true);
     try {
       if (!editingId) {
-        // Crear nuevo
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // CREACIÓN DE NUEVO USUARIO
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: form.email.toLowerCase().trim(),
-          password: form.password || 'Temporal123!'
+          password: form.password,
+          email_confirm: true,
+          user_metadata: { full_name: form.full_name.trim() }
         });
 
         if (authError) throw authError;
 
-        const { error: insError } = await supabase.from('perfiles').insert([{
-          id: authData.user.id,
-          username: form.username.trim().toLowerCase(),
-          email: form.email.toLowerCase().trim(),
-          full_name: form.full_name,
-          phone1: form.phone1,
-          phone2: form.phone2,
-          address: form.address,
-          referencias: form.referencias,
-          permisos: permisos,
-          active: true
-        }]);
-        if (insError) throw insError;
-        alert('Usuario creado correctamente');
+        if (authData?.user) {
+          // IMPORTANTE: Primero verificamos si el perfil ya se creó automáticamente por un Trigger de Supabase
+          const { data: existingProfile } = await supabaseAdmin
+            .from('perfiles')
+            .select('id')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (existingProfile) {
+            // Si ya existe (por el Trigger), lo actualizamos en lugar de insertar
+            const { error: upError } = await supabaseAdmin
+              .from('perfiles')
+              .update({
+                username: form.username.trim().toLowerCase(),
+                full_name: form.full_name.trim(),
+                phone1: form.phone1,
+                phone2: form.phone2,
+                address: form.address,
+                referencias: form.referencias,
+                permisos: permisos,
+                active: true
+              })
+              .eq('id', authData.user.id);
+            if (upError) throw upError;
+          } else {
+            // Si no existe, lo insertamos normalmente
+            const { error: insError } = await supabaseAdmin.from('perfiles').insert([{
+              id: authData.user.id,
+              username: form.username.trim().toLowerCase(),
+              email: form.email.toLowerCase().trim(),
+              full_name: form.full_name.trim(),
+              phone1: form.phone1,
+              phone2: form.phone2,
+              address: form.address,
+              referencias: form.referencias,
+              permisos: permisos,
+              active: true
+            }]);
+            if (insError) throw insError;
+          }
+          alert(`Usuario ${form.username} creado con éxito.`);
+        }
       } else {
-        // Actualizar existente
-        const { error: upError } = await supabase
+        // ACTUALIZACIÓN DE USUARIO EXISTENTE
+        const { error: upError } = await supabaseAdmin
           .from('perfiles')
           .update({
             username: form.username.trim().toLowerCase(),
-            full_name: form.full_name,
+            full_name: form.full_name.trim(),
             phone1: form.phone1,
             phone2: form.phone2,
             address: form.address,
             referencias: form.referencias,
             permisos: permisos,
-            email: form.email
+            email: form.email.toLowerCase().trim()
           })
           .eq('id', editingId);
+
         if (upError) throw upError;
-        alert('Perfil actualizado');
+        alert('Perfil actualizado con éxito');
       }
+
+      // RESETEAR FORMULARIO COMPLETAMENTE
       setEditingId(null);
       setForm(emptyForm);
       setPermisos({ adm: false, inv: false, com: false, ven: false, dev: false, rep: false });
       fetchUsers();
+
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -152,7 +202,7 @@ export default function Usuarios() {
       password: '',
       referencias: user.referencias || emptyForm.referencias
     });
-    setPermisos(user.permisos || { adm: false });
+    setPermisos(user.permisos || { adm: false, inv: false, com: false, ven: false, dev: false, rep: false });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -182,7 +232,7 @@ export default function Usuarios() {
               </div>
               <div>
                 <label className="label">Contraseña</label>
-                <input type="text" className="input-field" value={form.password} onChange={(e) => handleFormChange('password', e.target.value)} placeholder="Solo nuevos" />
+                <input type="password" size="1" className="input-field" value={form.password} onChange={(e) => handleFormChange('password', e.target.value)} placeholder={editingId ? "Dejar en blanco para mantener" : "Ej: Temporal123!"} />
               </div>
             </div>
 
@@ -216,7 +266,7 @@ export default function Usuarios() {
             <button type="submit" className="btn-ingresar" style={{ marginTop: 20 }} disabled={saving}>
               {saving ? 'Guardando...' : 'Guardar Datos'}
             </button>
-            {editingId && <button type="button" onClick={() => {setEditingId(null); setForm(emptyForm);}} style={{ marginLeft: 10 }}>Cancelar</button>}
+            {editingId && <button type="button" onClick={() => {setEditingId(null); setForm(emptyForm); setPermisos({ adm: false, inv: false, com: false, ven: false, dev: false, rep: false });}} style={{ marginLeft: 10 }}>Cancelar</button>}
           </form>
         </div>
 
@@ -235,8 +285,9 @@ export default function Usuarios() {
                 <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
                   <td style={{ padding: '10px 0', fontSize: '13px' }}>{u.username}</td>
                   <td style={{ fontSize: '13px' }}>{u.full_name}</td>
-                  <td>
+                  <td style={{ display: 'flex', gap: '8px', padding: '10px 0' }}>
                     <button className="btn-link" onClick={() => handleEdit(u)}>Editar</button>
+                    <button className="btn-link" style={{ color: '#e53e3e', fontWeight: 'bold' }} onClick={() => handleDelete(u.id, u.username)}>Eliminar</button>
                   </td>
                 </tr>
               ))}

@@ -42,6 +42,10 @@ export default function Login() {
         setLoading(false);
         return;
       } else {
+        // --- AQUÍ SE GUARDA EL NOMBRE PARA EL HEADER ---
+        // Guardamos el nombre que escribiste en el cuadro de "Usuario"
+        localStorage.setItem('userName', userTrimmed);
+        
         // Si todo sale bien, vamos al dashboard
         console.log("¡Ingreso exitoso!", data);
         setLoading(false);
