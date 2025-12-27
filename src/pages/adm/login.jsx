@@ -31,13 +31,20 @@ export default function Login() {
       });
 
       if (error) {
-        // Si hay error, lo mostramos en la consola para investigar
-        console.error("Error de Supabase:", error.message);
-        alert("Acceso denegado: Usuario o contraseña incorrectos.");
+        // Mostrar el objeto de error completo en consola para depurar
+        console.error("Error de Supabase:", error);
+        // Mensajes más precisos según el código de error
+        if (error.status === 400) {
+          alert("Acceso denegado: Usuario o contraseña incorrectos.");
+        } else {
+          alert(`Error de conexión: ${error.message || 'revisa la consola'}`);
+        }
         setLoading(false);
+        return;
       } else {
         // Si todo sale bien, vamos al dashboard
         console.log("¡Ingreso exitoso!", data);
+        setLoading(false);
         navigate('/dashboard');
       }
     } catch (err) {

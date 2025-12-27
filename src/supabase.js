@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-// URL de tu nuevo proyecto
-const supabaseUrl = 'https://hfntvugyodwpjxetujcj.supabase.co'
+// Leer desde variables de entorno (prefijo VITE_ requerido por Vite)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Tu clave anon public completa
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmbnR2dWd5b2R3cGp4ZXR1amNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2NjM4MzcsImV4cCI6MjA4MjIzOTgzN30.u3ftrPP2N1-F9_nEdhzHKxgQ3pbT1eWGri0ZOC09fNk'
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase: faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey)

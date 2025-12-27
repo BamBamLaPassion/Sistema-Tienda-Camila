@@ -1,169 +1,249 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import '../../app.css';
 
-export default function RegistroUsuarios() {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    usuario: '',
-    telefono: '',
-    direccion: '',
-    password: ''
-  });
-
-  const [permisos, setPermisos] = useState({
-    adm: false, inv: false, com: false, ven: false, dev: false, rep: false
-  });
-
+export default function Usuarios() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  const handleCheck = (e) => {
-    setPermisos({ ...permisos, [e.target.name]: e.target.checked });
+  const emptyForm = {
+    username: '', 
+    full_name: '',
+    email: '',
+    phone1: '',
+    phone2: '',
+    address: '',
+    password: '', 
+    referencias: [
+      { name: '', phone: '', address: '' },
+      { name: '', phone: '', address: '' }
+    ]
   };
 
-  const crearUsuario = async (e) => {
-    e.preventDefault();
+  const [form, setForm] = useState(emptyForm);
+  const [permisos, setPermisos] = useState({ adm: false, inv: false, com: false, ven: false, dev: false, rep: false });
+
+  const modules = [
+    { key: 'adm', label: 'Administración' },
+    { key: 'inv', label: 'Inventarios' },
+    { key: 'com', label: 'Compras' },
+    { key: 'ven', label: 'Ventas / Caja' },
+    { key: 'dev', label: 'Devoluciones' },
+    { key: 'rep', label: 'Reportes' }
+  ];
+
+  const fetchUsers = async () => {
     setLoading(true);
+    const { data, error } = await supabase
+      .from('perfiles')
+      .select('id, username, email, full_name, phone1, phone2, address, referencias, permisos, active, created_at')
+      .order('created_at', { ascending: false });
 
-    // 1. Crear el acceso en Supabase Authentication
-    // Usamos el nombre de usuario + @tienda.com para cumplir el requisito de email
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: `${formData.usuario.trim().toLowerCase()}@tienda.com`,
-      password: formData.password,
-    });
-
-    if (authError) {
-      alert("Error de Autenticación: " + authError.message);
-      setLoading(false);
-      return;
+    if (error) {
+      console.error('Error al leer perfiles:', error);
+      setUsers([]);
+    } else {
+      setUsers(data || []);
     }
-
-    // 2. Guardar los datos extendidos en la tabla 'perfiles' vinculada por el ID
-    if (authData.user) {
-      const { error: dbError } = await supabase
-        .from('perfiles')
-        .insert([
-          { 
-            id: authData.user.id, 
-            username: formData.usuario.trim().toLowerCase(),
-            full_name: formData.nombre, 
-            phone: formData.telefono, 
-            address: formData.direccion,
-            permisos: permisos
-          }
-        ]);
-
-      if (dbError) {
-        alert("Usuario creado en Auth, pero error en Tabla Perfiles: " + dbError.message);
-      } else {
-        alert("¡ÉXITO! Usuario [" + formData.usuario + "] registrado oficialmente en el sistema.");
-        
-        // Limpiar el estado y el formulario
-        setFormData({ nombre: '', usuario: '', telefono: '', direccion: '', password: '' });
-        setPermisos({ adm: false, inv: false, com: false, ven: false, dev: false, rep: false });
-        e.target.reset();
-      }
-    }
-
     setLoading(false);
   };
 
+  useEffect(() => {
+    fetchUsers();
+    const channel = supabase
+      .channel('realtime-perfiles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'perfiles' }, () => {
+        fetchUsers();
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const handlePermChange = (key, checked) => {
+    setPermisos({ ...permisos, [key]: checked });
+  };
+
+  const handleFormChange = (field, value) => setForm({ ...form, [field]: value });
+
+  const handleRefChange = (index, field, value) => {
+    const refs = [...form.referencias];
+    refs[index] = { ...refs[index], [field]: value };
+    setForm({ ...form, referencias: refs });
+  };
+
+  const validateForm = () => {
+    if (!form.full_name.trim()) return 'El nombre completo es obligatorio.';
+    if (!form.username.trim()) return 'El nombre de usuario es obligatorio.';
+    if (!form.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) return 'Email no válido.';
+    if (!form.phone1.trim()) return 'Teléfono 1 es obligatorio.';
+    return null;
+  };
+
+  const handleCreateOrUpdate = async (e) => {
+    e && e.preventDefault();
+    const err = validateForm();
+    if (err) return alert(err);
+
+    setSaving(true);
+    try {
+      if (!editingId) {
+        // Crear nuevo
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: form.email.toLowerCase().trim(),
+          password: form.password || 'Temporal123!'
+        });
+
+        if (authError) throw authError;
+
+        const { error: insError } = await supabase.from('perfiles').insert([{
+          id: authData.user.id,
+          username: form.username.trim().toLowerCase(),
+          email: form.email.toLowerCase().trim(),
+          full_name: form.full_name,
+          phone1: form.phone1,
+          phone2: form.phone2,
+          address: form.address,
+          referencias: form.referencias,
+          permisos: permisos,
+          active: true
+        }]);
+        if (insError) throw insError;
+        alert('Usuario creado correctamente');
+      } else {
+        // Actualizar existente
+        const { error: upError } = await supabase
+          .from('perfiles')
+          .update({
+            username: form.username.trim().toLowerCase(),
+            full_name: form.full_name,
+            phone1: form.phone1,
+            phone2: form.phone2,
+            address: form.address,
+            referencias: form.referencias,
+            permisos: permisos,
+            email: form.email
+          })
+          .eq('id', editingId);
+        if (upError) throw upError;
+        alert('Perfil actualizado');
+      }
+      setEditingId(null);
+      setForm(emptyForm);
+      setPermisos({ adm: false, inv: false, com: false, ven: false, dev: false, rep: false });
+      fetchUsers();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (user) => {
+    setEditingId(user.id);
+    setForm({
+      username: user.username || '',
+      full_name: user.full_name || '',
+      email: user.email || '',
+      phone1: user.phone1 || '',
+      phone2: user.phone2 || '',
+      address: user.address || '',
+      password: '',
+      referencias: user.referencias || emptyForm.referencias
+    });
+    setPermisos(user.permisos || { adm: false });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <div style={{ padding: '40px', backgroundColor: '#F0F4F8', minHeight: '100vh' }}>
-      <header style={{ marginBottom: '30px' }}>
-        <h1 style={{ color: '#102A43', margin: 0 }}>ADM02 - Registro de Personal</h1>
-        <p style={{ color: '#627D98' }}>Alta de nuevos colaboradores y asignación de privilegios.</p>
-      </header>
+    <div style={{ padding: 24 }}>
+      <h1 style={{ color: '#102A43' }}>{editingId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h1>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 20 }}>
+        <div style={{ background: '#fff', padding: 20, borderRadius: 8 }}>
+          <form onSubmit={handleCreateOrUpdate}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+              <div>
+                <label className="label">Usuario (Username)</label>
+                <input className="input-field" value={form.username} onChange={(e) => handleFormChange('username', e.target.value)} required />
+              </div>
+              <div>
+                <label className="label">Nombre completo</label>
+                <input className="input-field" value={form.full_name} onChange={(e) => handleFormChange('full_name', e.target.value)} required />
+              </div>
+            </div>
 
-      <form onSubmit={crearUsuario} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-        
-        {/* SECCIÓN 1: DATOS PERSONALES */}
-        <div style={{ background: '#fff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#FF6B00', marginTop: 0 }}>1. Ficha del Empleado</h3>
-          
-          <div className="input-group">
-            <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>Nombre Completo</label>
-            <input type="text" className="input-field" placeholder="Ej: Juan Perez" 
-              onChange={(e) => setFormData({...formData, nombre: e.target.value})} required />
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <label className="label">Email</label>
+                <input type="email" className="input-field" value={form.email} onChange={(e) => handleFormChange('email', e.target.value)} required />
+              </div>
+              <div>
+                <label className="label">Contraseña</label>
+                <input type="text" className="input-field" value={form.password} onChange={(e) => handleFormChange('password', e.target.value)} placeholder="Solo nuevos" />
+              </div>
+            </div>
 
-          <div className="input-group">
-            <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>Teléfono / WhatsApp</label>
-            <input type="text" className="input-field" placeholder="Celular de contacto" 
-              onChange={(e) => setFormData({...formData, telefono: e.target.value})} required />
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+              <div>
+                <label className="label">Teléfono 1</label>
+                <input className="input-field" value={form.phone1} onChange={(e) => handleFormChange('phone1', e.target.value)} required />
+              </div>
+              <div>
+                <label className="label">Teléfono 2</label>
+                <input className="input-field" value={form.phone2} onChange={(e) => handleFormChange('phone2', e.target.value)} />
+              </div>
+            </div>
 
-          <div className="input-group">
-            <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>Dirección Particular</label>
-            <input type="text" className="input-field" placeholder="Domicilio actual" 
-              onChange={(e) => setFormData({...formData, direccion: e.target.value})} required />
-          </div>
+            <div style={{ marginTop: 12 }}>
+              <label className="label">Dirección</label>
+              <input className="input-field" value={form.address} onChange={(e) => handleFormChange('address', e.target.value)} />
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <h4>Permisos</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {modules.map(m => (
+                  <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={permisos[m.key]} onChange={(e) => handlePermChange(m.key, e.target.checked)} /> {m.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="btn-ingresar" style={{ marginTop: 20 }} disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar Datos'}
+            </button>
+            {editingId && <button type="button" onClick={() => {setEditingId(null); setForm(emptyForm);}} style={{ marginLeft: 10 }}>Cancelar</button>}
+          </form>
         </div>
 
-        {/* SECCIÓN 2: SEGURIDAD */}
-        <div style={{ background: '#fff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#FF6B00', marginTop: 0 }}>2. Credenciales de Acceso</h3>
-          
-          <div className="input-group">
-            <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>ID de Usuario (Login)</label>
-            <input type="text" className="input-field" placeholder="Ej: perez.ventas" 
-              onChange={(e) => setFormData({...formData, usuario: e.target.value})} required />
-          </div>
-
-          <div className="input-group">
-            <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>Contraseña Temporal</label>
-            <input type="password" className="input-field" placeholder="Mínimo 6 caracteres" 
-              onChange={(e) => setFormData({...formData, password: e.target.value})} required />
-          </div>
+        <div style={{ background: '#fff', padding: 16, borderRadius: 8, height: '600px', overflowY: 'auto' }}>
+          <h3>Lista de Usuarios</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', fontSize: '12px', borderBottom: '2px solid #eee' }}>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '10px 0', fontSize: '13px' }}>{u.username}</td>
+                  <td style={{ fontSize: '13px' }}>{u.full_name}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => handleEdit(u)}>Editar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        {/* SECCIÓN 3: MATRIZ DE PERMISOS */}
-        <div style={{ gridColumn: '1 / span 2', background: '#102A43', padding: '30px', borderRadius: '15px', color: 'white' }}>
-          <h3 style={{ color: '#FF6B00', marginTop: 0, marginBottom: '20px' }}>3. Matriz de Permisos por Módulos</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="adm" checked={permisos.adm} onChange={handleCheck} /> 
-              Administración (ADM)
-            </label>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="inv" checked={permisos.inv} onChange={handleCheck} /> 
-              Inventarios (INV)
-            </label>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="com" checked={permisos.com} onChange={handleCheck} /> 
-              Compras (COM)
-            </label>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="ven" checked={permisos.ven} onChange={handleCheck} /> 
-              Ventas / Caja (VEN)
-            </label>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="dev" checked={permisos.dev} onChange={handleCheck} /> 
-              Devoluciones (DEV)
-            </label>
-            <label style={checkLabelStyle}>
-              <input type="checkbox" name="rep" checked={permisos.rep} onChange={handleCheck} /> 
-              Reportes (REP)
-            </label>
-          </div>
-        </div>
-
-        <button type="submit" className="btn-ingresar" style={{ gridColumn: '1 / span 2', height: '60px', fontSize: '18px' }} disabled={loading}>
-          {loading ? 'GUARDANDO EN BASE DE DATOS...' : 'FINALIZAR REGISTRO Y ACTIVAR USUARIO'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
-
-const checkLabelStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  cursor: 'pointer',
-  padding: '12px',
-  background: 'rgba(255,255,255,0.08)',
-  borderRadius: '8px',
-  fontSize: '14px',
-  transition: 'background 0.3s'
-};
