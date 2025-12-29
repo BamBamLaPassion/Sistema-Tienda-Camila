@@ -34,56 +34,84 @@ const UserHeader = () => {
   );
 };
 
-// --- DISEÑO DEL SISTEMA (Sidebar Completo para Admin) ---
-const AppLayout = ({ children }) => (
-  <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-    <aside style={{ width: '280px', background: '#102A43', color: 'white', overflowY: 'auto', padding: '20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-         <h2 style={{ color: '#FF6B00', margin: 0, fontSize: '22px' }}>Tienda Camila</h2>
-         <small style={{ opacity: 0.7 }}>Panel de Control Admin</small>
-      </div>
-      
-      <nav>
-        {/* SECCIÓN ADMINISTRACIÓN */}
-        <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>ADMINISTRACIÓN</p>
-        <Link to="/adm02" className="nav-link-custom">adm02 - Usuarios y Permisos</Link>
-        <Link to="/adm03" className="nav-link-custom">adm03 - Clientes</Link>
+// --- DISEÑO DEL SISTEMA (Sidebar con Filtro de Permisos y Supervison de Admin) ---
+const AppLayout = ({ children }) => {
+  const userName = localStorage.getItem('userName') || "";
+  const permisosRaw = localStorage.getItem('userPermisos');
+  const permisos = permisosRaw ? JSON.parse(permisosRaw) : {};
 
-        {/* SECCIÓN INVENTARIOS */}
-        <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>INVENTARIOS</p>
-        <Link to="/inv01" className="nav-link-custom">inv01 - Productos / Stock</Link>
-        <Link to="/inv02" className="nav-link-custom">inv02 - Movimientos</Link>
+  // REGLA DE ORO: Si el usuario se llama "admin", tiene acceso a todo.
+  const esAdmin = userName.toLowerCase() === 'admin';
 
-        {/* SECCIÓN COMPRAS */}
-        <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>COMPRAS</p>
-        <Link to="/com01" className="nav-link-custom">com01 - Nueva Compra</Link>
-
-        {/* SECCIÓN VENTAS */}
-        <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>VENTAS Y CAJA</p>
-        <Link to="/ven01" className="nav-link-custom">ven01 - Realizar Venta</Link>
-        <Link to="/ven02" className="nav-link-custom">ven02 - Historial de Caja</Link>
-
-        {/* SECCIÓN REPORTES */}
-        <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>REPORTES Y DEVOLUCIONES</p>
-        <Link to="/dev01" className="nav-link-custom">dev01 - Devoluciones</Link>
-        <Link to="/rep01" className="nav-link-custom">rep01 - Reportes Generales</Link>
-        
-        {/* BOTÓN CERRAR SESIÓN */}
-        <div style={{ marginTop: '40px', borderTop: '1px solid #243B53', paddingTop: '20px' }}>
-          <Link to="/" onClick={() => localStorage.clear()} style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 'bold' }}>CERRAR SESIÓN</Link>
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <aside style={{ width: '280px', background: '#102A43', color: 'white', overflowY: 'auto', padding: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+           <h2 style={{ color: '#FF6B00', margin: 0, fontSize: '22px' }}>Tienda Camila</h2>
+           <small style={{ opacity: 0.7 }}>{esAdmin ? 'Panel de Control Admin' : 'Panel de Control'}</small>
         </div>
-      </nav>
-    </aside>
+        
+        <nav>
+          {/* SECCIÓN ADMINISTRACIÓN - Visible si es admin o tiene permiso 'adm' */}
+          {(esAdmin || permisos.adm) && (
+            <>
+              <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>ADMINISTRACIÓN</p>
+              <Link to="/adm02" className="nav-link-custom">adm02 - Usuarios y Permisos</Link>
+              <Link to="/adm03" className="nav-link-custom">adm03 - Clientes</Link>
+            </>
+          )}
 
-    {/* ÁREA DE CONTENIDO CON HEADER SUPERIOR */}
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <UserHeader />
-      <main style={{ flex: 1, background: '#F0F4F8', overflowY: 'auto' }}>
-        {children}
-      </main>
+          {/* SECCIÓN INVENTARIOS - Visible si es admin o tiene permiso 'inv' */}
+          {(esAdmin || permisos.inv) && (
+            <>
+              <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>INVENTARIOS</p>
+              <Link to="/inv01" className="nav-link-custom">inv01 - Productos / Stock</Link>
+              <Link to="/inv02" className="nav-link-custom">inv02 - Movimientos</Link>
+            </>
+          )}
+
+          {/* SECCIÓN COMPRAS - Visible si es admin o tiene permiso 'com' */}
+          {(esAdmin || permisos.com) && (
+            <>
+              <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>COMPRAS</p>
+              <Link to="/com01" className="nav-link-custom">com01 - Nueva Compra</Link>
+            </>
+          )}
+
+          {/* SECCIÓN VENTAS - Visible si es admin o tiene permiso 'ven' */}
+          {(esAdmin || permisos.ven) && (
+            <>
+              <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>VENTAS Y CAJA</p>
+              <Link to="/ven01" className="nav-link-custom">ven01 - Realizar Venta</Link>
+              <Link to="/ven02" className="nav-link-custom">ven02 - Historial de Caja</Link>
+            </>
+          )}
+
+          {/* SECCIÓN REPORTES Y DEVOLUCIONES - Visible si es admin o tiene 'dev' o 'rep' */}
+          {(esAdmin || permisos.dev || permisos.rep) && (
+            <>
+              <p style={{ color: '#FF6B00', fontWeight: 'bold', fontSize: '11px', marginBottom: '10px', marginTop: '20px' }}>REPORTES Y DEVOLUCIONES</p>
+              {(esAdmin || permisos.dev) && <Link to="/dev01" className="nav-link-custom">dev01 - Devoluciones</Link>}
+              {(esAdmin || permisos.rep) && <Link to="/rep01" className="nav-link-custom">rep01 - Reportes Generales</Link>}
+            </>
+          )}
+          
+          {/* BOTÓN CERRAR SESIÓN */}
+          <div style={{ marginTop: '40px', borderTop: '1px solid #243B53', paddingTop: '20px' }}>
+            <Link to="/" onClick={() => localStorage.clear()} style={{ color: '#FF6B00', textDecoration: 'none', fontWeight: 'bold' }}>CERRAR SESIÓN</Link>
+          </div>
+        </nav>
+      </aside>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <UserHeader />
+        <main style={{ flex: 1, background: '#F0F4F8', overflowY: 'auto' }}>
+          {children}
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Componente provisional para módulos que todavía no tienen archivo .jsx
 const EnDesarrollo = ({ nombre }) => (
@@ -104,16 +132,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/dashboard" element={
           <AppLayout>
             <div style={{ padding: '40px', textAlign: 'center' }}>
-              <h1 style={{ color: '#102A43' }}>Bienvenido Admin</h1>
-              <p>Tienes acceso total a todas las áreas del sistema.</p>
+              <h1 style={{ color: '#102A43' }}>Bienvenido al Sistema</h1>
+              <p>Usa el menú lateral para navegar por las áreas permitidas.</p>
             </div>
           </AppLayout>
         } />
 
-        {/* MÓDULO TERMINADO */}
         <Route path="/adm02" element={<AppLayout><Usuarios /></AppLayout>} />
-
-        {/* RUTAS EN ESPERA DE ARCHIVOS */}
         <Route path="/adm03" element={<AppLayout><EnDesarrollo nombre="Clientes" /></AppLayout>} />
         <Route path="/inv01" element={<AppLayout><EnDesarrollo nombre="Productos" /></AppLayout>} />
         <Route path="/inv02" element={<AppLayout><EnDesarrollo nombre="Movimientos" /></AppLayout>} />

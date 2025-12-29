@@ -1,7 +1,12 @@
 /* src/app.css */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
+
 :root {
-  --naranja: #FF6B00;
-  --azul-serio: #102A43;
+  /* Modificado: Tonos extraídos de tu imagen de referencia */
+  --naranja-claro-centro: #FF9D42; /* El tono claro cerca del logo */
+  --naranja-base: #FF822E;        /* El tono principal de tu imagen */
+  --celeste-cielo: #87CEEB;
+  --azul-profundo: #102A43;
   --blanco: #ffffff;
   --gris-fondo: #f0f4f8;
 }
@@ -12,7 +17,7 @@ body, html, #root {
   padding: 0;
   height: 100%;
   width: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Quicksand', 'Segoe UI', sans-serif;
 }
 
 /* Contenedor de pantalla dividida */
@@ -25,7 +30,8 @@ body, html, #root {
 /* Lado Izquierdo: Branding */
 .login-branding {
   flex: 1.2;
-  background: linear-gradient(135deg, var(--azul-serio) 0%, var(--naranja) 100%);
+  /* Modificado: Degradado RADIAL para iluminar el centro cerca del logo */
+  background: radial-gradient(circle, var(--naranja-claro-centro) 0%, var(--naranja-base) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -35,18 +41,41 @@ body, html, #root {
   text-align: center;
 }
 
-.logo-circle {
-  background: white;
-  padding: 25px;
-  border-radius: 50%;
-  margin-bottom: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+/* --- ESTILOS DE TEXTO MODIFICADOS --- */
+.login-branding h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+.login-branding p {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-top: 5px;
+  opacity: 0.95;
+}
+
+/* --- MODIFICACIÓN DEL CÍRCULO --- */
+.logo-circle {
+  background: white;
+  width: 180px;      
+  height: 180px;     
+  border-radius: 50%;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  display: flex;     
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;  
+  padding: 0;        
+}
+
+/* --- MODIFICACIÓN DE LA IMAGEN --- */
 .logo-img {
-  width: 100px;
-  height: 100px;
-  object-fit: contain;
+  width: 100%;       
+  height: 100%;      
+  object-fit: cover; 
 }
 
 /* Lado Derecho: Formulario */
@@ -61,7 +90,7 @@ body, html, #root {
 
 .login-form {
   width: 100%;
-  maxWidth: 360px;
+  max-width: 360px;
 }
 
 .input-group {
@@ -72,7 +101,7 @@ body, html, #root {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: var(--azul-serio);
+  color: var(--azul-profundo);
   font-size: 14px;
 }
 
@@ -84,30 +113,32 @@ body, html, #root {
   font-size: 16px;
   box-sizing: border-box;
   transition: border-color 0.3s;
+  font-family: 'Quicksand', sans-serif;
 }
 
 .input-field:focus {
   outline: none;
-  border-color: var(--naranja);
+  border-color: var(--naranja-base); /* Cambiado a naranja para consistencia */
 }
 
-/* Botón Naranja */
+/* Botón ahora en Azul Profundo para mejor contraste */
 .btn-ingresar {
   width: 100%;
   padding: 16px;
-  background-color: var(--naranja);
+  background-color: var(--azul-profundo);
   color: white;
   border: none;
   border-radius: 10px;
   font-weight: bold;
   font-size: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(16, 42, 67, 0.3);
   transition: transform 0.2s, background 0.3s;
+  font-family: 'Quicksand', sans-serif;
 }
 
 .btn-ingresar:hover {
-  background-color: #e66000;
+  background-color: #0d2135;
   transform: translateY(-2px);
 }
 
